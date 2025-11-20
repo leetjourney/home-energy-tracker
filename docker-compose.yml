@@ -1,0 +1,17 @@
+services:
+  mysql:
+    image: mysql:8.3.0
+    container_name: mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: home_energy_tracker
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./docker/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - db-data:/var/lib/mysql
+      - db-data:/var/log/mysql
+
+volumes:
+  db-data:
