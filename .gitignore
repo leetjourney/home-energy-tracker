@@ -5,6 +5,7 @@ target/
 build/
 out/
 !mvn/wrapper/maven-wrapper.jar
+influxdb_data/
 
 ### STS ###
 .apt_generated
