@@ -6,6 +6,8 @@ import com.leetjouney.device_service.exception.DeviceNotFoundException;
 import com.leetjouney.device_service.repository.DeviceRepository;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Service
 public class DeviceService {
 
@@ -52,6 +54,13 @@ public class DeviceService {
             throw new DeviceNotFoundException("Device not found with id " + id);
         }
         deviceRepository.deleteById(id);
+    }
+
+    public List<DeviceDto> getAllDevicesByUserId(Long userId) {
+        List<Device> devices = deviceRepository.findAllByUserId(userId);
+        return devices.stream()
+                .map(this::mapToDto)
+                .toList();
     }
 
 
