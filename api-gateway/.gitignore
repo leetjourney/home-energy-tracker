@@ -1,0 +1,46 @@
+HELP.md
+
+### Build Artifacts ###
+target/
+build/
+out/
+!mvn/wrapper/maven-wrapper.jar
+influxdb_data/
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+### IntelliJ IDEA ###
+.idea/
+*.iws
+*.iml
+*.ipr
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+### VS Code ###
+.vscode/
+
+### OS & Miscellaneous ###
+.DS_Store
+Thumbs.db
+logs/
+*.log
+
+### Compiled Java Files ###
+*.class
+
+### Maven & Gradle ###
+.mvn/
+.gradle/
