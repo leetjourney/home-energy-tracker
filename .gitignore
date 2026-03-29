@@ -5,7 +5,6 @@ target/
 build/
 out/
 !mvn/wrapper/maven-wrapper.jar
-influxdb_data/
 
 ### STS ###
 .apt_generated
@@ -44,3 +43,7 @@ logs/
 ### Maven & Gradle ###
 .mvn/
 .gradle/
+
+#Excluded dirs
+influxdb_data/
+volume-data/
