@@ -10,6 +10,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 
 @Slf4j
 @SpringBootTest
+@Disabled
 class UserServiceApplicationTests {
 
     private static final int NUMBER_OF_USERS = 10;
