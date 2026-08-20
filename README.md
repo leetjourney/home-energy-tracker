@@ -24,7 +24,7 @@ I forked this project to practice **DevOps** on top of an already realistic, mul
 
 The application code, the Compose stack, and the observability wiring are leetjourney's original work. On top of that, I added:
 
-- **`Terraform/`** — Infrastructure as Code to provision the stack on **AWS** (currently **live**, see [Current deployment status](#current-deployment-status)):
+- **`Terraform/`** — Infrastructure as Code to provision the stack on **AWS** (stopped by default to avoid ongoing cost, see [Current deployment status](#current-deployment-status)):
   - `main.tf` — an EC2 instance (latest Ubuntu AMI, `t3.small`, 30 GB `gp3` root volume) with a `user_data` bootstrap script that installs **Docker** and the **Docker Compose plugin** on first boot, so the existing `docker-compose.yml` can run unmodified on the instance.
   - A dedicated **security group** exposing only what's needed: SSH (22) and the observability/admin ports (Grafana 3000, Prometheus 9090, Kafka UI 8070, Mailpit 8025, Keycloak 8091) restricted to my own IP, with only the **API Gateway** (9000) open publicly — a basic least-privilege network boundary instead of opening everything.
   - An `aws_key_pair` resource wired to a local SSH public key, and a `data "aws_ami"` lookup so the instance always boots the latest Ubuntu image instead of a hardcoded, staleness-prone AMI ID.
@@ -38,7 +38,7 @@ The practical exercise here is turning a "runs on my machine via Compose" projec
 
 ### Current deployment status
 
-**Live on AWS** — `terraform plan` matches the running infrastructure exactly (**no changes**): one EC2 instance (`t3.small`, `eu-west-3`) behind a stable Elastic IP, reachable at the address in `terraform output instance_public_ip`. The instance had gone network-unreachable for a few days (AWS reachability check failed) and was recovered with a reboot; its boot log now shows SSHD, Docker, and all containers starting cleanly.
+**Stopped** — the EC2 instance (`t3.small`, `eu-west-3`, behind a stable Elastic IP) is intentionally left stopped rather than run continuously, to avoid paying for idle infrastructure on a personal budget. It was last verified fully working on 2026-08-20: recovered from a network-unreachable state with a reboot, boot log confirmed SSHD, Docker, and all containers starting cleanly. It is not live right now — start it with `terraform apply` (or from the AWS console) for a live demo; the address is in `terraform output instance_public_ip`.
 
 A parallel Azure port of this same Terraform exists on `feature/infra-azure` (`terraform plan` validated there too, 8 resources, 0 errors) but hasn't been applied — it's parked behind an Azure subscription that needs a payment method before Azure will allow any write action.
 
