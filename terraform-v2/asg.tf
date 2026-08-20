@@ -29,6 +29,7 @@ resource "aws_launch_template" "app" {
     ebs {
       volume_size = 30
       volume_type = "gp3"
+      encrypted   = true
     }
   }
 
