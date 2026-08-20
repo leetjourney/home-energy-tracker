@@ -31,7 +31,10 @@ variable "azs" {
 variable "instance_type" {
   description = "EC2 instance type for the Auto Scaling Group"
   type        = string
-  default     = "t3.small" # 2GB RAM, same sizing as v1 - JVM services + Kafka + InfluxDB + Keycloak
+  # t3.medium got rejected: this account only allows launching Free-Tier-eligible
+  # instance types. c7i-flex.large (4GB RAM) is Free-Tier-eligible in this account/
+  # region and fixes the t3.small (2GB) OOM that lost even the SSM agent.
+  default = "c7i-flex.large"
 }
 
 variable "asg_desired_capacity" {
