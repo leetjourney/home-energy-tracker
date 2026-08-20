@@ -1,6 +1,5 @@
 # Home Energy Tracker
 
-juniooooooooooo
 [![Java](https://img.shields.io/badge/Java-21-orange.svg)](https://openjdk.org/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.0-green.svg)](https://spring.io/projects/spring-boot)
 [![Spring Cloud](https://img.shields.io/badge/Spring%20Cloud-2025.1.0-blue.svg)](https://spring.io/projects/spring-cloud)
@@ -25,14 +24,23 @@ I forked this project to practice **DevOps** on top of an already realistic, mul
 
 The application code, the Compose stack, and the observability wiring are leetjourney's original work. On top of that, I added:
 
-- **`Terraform/`** — Infrastructure as Code to provision the stack on **AWS**:
+- **`Terraform/`** — Infrastructure as Code to provision the stack on **AWS** (currently **live**, see [Current deployment status](#current-deployment-status)):
   - `main.tf` — an EC2 instance (latest Ubuntu AMI, `t3.small`, 30 GB `gp3` root volume) with a `user_data` bootstrap script that installs **Docker** and the **Docker Compose plugin** on first boot, so the existing `docker-compose.yml` can run unmodified on the instance.
   - A dedicated **security group** exposing only what's needed: SSH (22) and the observability/admin ports (Grafana 3000, Prometheus 9090, Kafka UI 8070, Mailpit 8025, Keycloak 8091) restricted to my own IP, with only the **API Gateway** (9000) open publicly — a basic least-privilege network boundary instead of opening everything.
   - An `aws_key_pair` resource wired to a local SSH public key, and a `data "aws_ami"` lookup so the instance always boots the latest Ubuntu image instead of a hardcoded, staleness-prone AMI ID.
-  - `variable.tf` / `terraform.tfvars` — parameterized region (`eu-west-3` by default), instance type, and the operator's IP/CIDR, so the same configuration is reusable without editing `main.tf`.
+  - An IAM role/instance profile for **SSM**, and an **Elastic IP** so the address stays stable across stop/start.
+  - `variables.tf` / `terraform.tfvars` — parameterized region (`eu-west-3` by default), instance type, and the operator's IP/CIDR, so the same configuration is reusable without editing `main.tf`.
   - `outputs.tf` — exposes the instance's public IP, instance ID, and a ready-to-use `ssh` command after `terraform apply`.
+- **`Jenkinsfile`** — CI/CD pipeline: builds each service, pushes images to a registry, and deploys over SSH to the target host.
+- **A Docker Hub/Azure port of the same infrastructure** on the `feature/infra-azure` branch, as a second exercise in provisioning the same stack against a different cloud provider — see that branch's README for details. It's not merged into `master` because AWS is the version actually running.
 
 The practical exercise here is turning a "runs on my machine via Compose" project into something provisioned, reproducible, and deployable to a real cloud environment with `terraform init/plan/apply`, without having to touch the application code.
+
+### Current deployment status
+
+**Live on AWS** — `terraform plan` matches the running infrastructure exactly (**no changes**): one EC2 instance (`t3.small`, `eu-west-3`) behind a stable Elastic IP, reachable at the address in `terraform output instance_public_ip`. The instance had gone network-unreachable for a few days (AWS reachability check failed) and was recovered with a reboot; its boot log now shows SSHD, Docker, and all containers starting cleanly.
+
+A parallel Azure port of this same Terraform exists on `feature/infra-azure` (`terraform plan` validated there too, 8 resources, 0 errors) but hasn't been applied — it's parked behind an Azure subscription that needs a payment method before Azure will allow any write action.
 
 ---
 
@@ -162,9 +170,11 @@ Kubernetes is **not** part of this repo; deploying to K8s would be a natural ext
 ### Clone the repository
 
 ```bash
-git clone git@github.com:leetjourney/home-energy-tracker.git
+git clone git@github.com:JuniorZ-spec/home-energy-tracker.git
 cd home-energy-tracker
 ```
+
+> Original upstream (application code only, no Terraform/Jenkins additions): [leetjourney/home-energy-tracker](https://github.com/leetjourney/home-energy-tracker).
 
 ### Start infrastructure
 
@@ -248,8 +258,10 @@ Use Grafana for dashboards and Prometheus for ad-hoc queries and alerting rules 
 
 ## Future improvements
 
+Already in place (see [What I added on top](#what-i-added-on-top-devops-focus)): Terraform IaC (live on AWS, ported to Azure on `feature/infra-azure`), a Jenkins CI/CD pipeline (`Jenkinsfile`). Still open:
+
 - **End-to-end tests** — Contract or black-box tests across gateway → services → Kafka → DB
-- **CI/CD** — Build matrix per service, image publish, Compose or K8s smoke tests
+- **Finish the Azure deployment** — `terraform apply` on `feature/infra-azure` as soon as that subscription is reactivated
 - **Frontend dashboard** — SPA for devices, live usage charts, alert history
 - **AuthZ hardening** — Fine-grained scopes, service-to-service tokens, policy engine
 - **Kubernetes** — Helm charts, external secrets, HPA, and Kafka/Influx operators
