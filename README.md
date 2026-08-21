@@ -32,15 +32,43 @@ The application code, the Compose stack, and the observability wiring are leetjo
   - `variables.tf` / `terraform.tfvars` — parameterized region (`eu-west-3` by default), instance type, and the operator's IP/CIDR, so the same configuration is reusable without editing `main.tf`.
   - `outputs.tf` — exposes the instance's public IP, instance ID, and a ready-to-use `ssh` command after `terraform apply`.
 - **`Jenkinsfile`** — CI/CD pipeline: builds each service, pushes images to a registry, and deploys over SSH to the target host.
+- **`terraform-v2/`** — a resilience rewrite of the same deployment: single EC2 instance → VPC across 2 AZs, Application Load Balancer, Auto Scaling Group, and RDS MySQL **Multi-AZ** in place of the self-managed MySQL container. See [v2 — Multi-AZ resilience upgrade](#v2--multi-az-resilience-upgrade) below.
 - **A Docker Hub/Azure port of the same infrastructure** on the `feature/infra-azure` branch, as a second exercise in provisioning the same stack against a different cloud provider — see that branch's README for details. It's not merged into `master` because AWS is the version actually running.
 
 The practical exercise here is turning a "runs on my machine via Compose" project into something provisioned, reproducible, and deployable to a real cloud environment with `terraform init/plan/apply`, without having to touch the application code.
 
 ### Current deployment status
 
-**Stopped** — the EC2 instance (`t3.small`, `eu-west-3`, behind a stable Elastic IP) is intentionally left stopped rather than run continuously, to avoid paying for idle infrastructure on a personal budget. It was last verified fully working on 2026-08-20: recovered from a network-unreachable state with a reboot, boot log confirmed SSHD, Docker, and all containers starting cleanly. It is not live right now — start it with `terraform apply` (or from the AWS console) for a live demo; the address is in `terraform output instance_public_ip`.
+**Stopped** — the v1 EC2 instance (`t3.small`, `eu-west-3`, behind a stable Elastic IP) is intentionally left stopped rather than run continuously, to avoid paying for idle infrastructure on a personal budget. It was last verified fully working on 2026-08-20: recovered from a network-unreachable state with a reboot, boot log confirmed SSHD, Docker, and all containers starting cleanly. It is not live right now — start it with `terraform apply` (or from the AWS console) for a live demo; the address is in `terraform output instance_public_ip`.
 
-A parallel Azure port of this same Terraform exists on `feature/infra-azure` (`terraform plan` validated there too, 8 resources, 0 errors) but hasn't been applied — it's parked behind an Azure subscription that needs a payment method before Azure will allow any write action.
+The **v2** Multi-AZ stack (below) follows the same pattern: applied for a verification window, then destroyed — it is not live either.
+
+A parallel Azure port of this same Terraform exists on `feature/infra-azure` (`terraform plan` validated there too, 8 resources, 0 errors) but hasn't been applied.
+
+---
+
+## v2 — Multi-AZ resilience upgrade
+
+The v1 deployment has a real weakness: one EC2 instance running everything, including MySQL in a container. If that instance goes down, the app and its data go down together. `terraform-v2/` replaces that with a horizontally-resilient design:
+
+| | v1 | v2 |
+| --- | --- | --- |
+| Compute | 1 EC2 instance, 1 AZ | Auto Scaling Group, 2 instances across 2 AZs, behind an Application Load Balancer |
+| Database | MySQL in a Docker container on the same instance | RDS MySQL, **Multi-AZ** (automatic failover to a standby replica) |
+| Secrets | `.env` file on the instance | Generated with Terraform's `random_password`, stored in **AWS Secrets Manager**, fetched by the instance via its IAM role at boot |
+| Remote access | SSH (restricted to my IP) + SSM | **SSM only** — no SSH port open |
+| Network | Default VPC | Dedicated VPC, public/private subnets across 2 AZs, NAT Gateway |
+
+**Verified live** during the build (2026-08-20), before the infrastructure was destroyed:
+
+- `curl` against the ALB's public DNS name returned `HTTP/1.1 200` with `{"status":"UP"}` from the api-gateway's `/actuator/health`.
+- Both ASG targets showed `healthy` in the target group.
+- RDS showed `Multi-AZ: true`, primary in `eu-west-3b`, standby in `eu-west-3a`, status `available`.
+- The Auto Scaling Group's CPU target-tracking policy (50%) fired for real during the boot-time CPU spike (Docker pulls + JVM startup): desired capacity went from 2 → 3, then back to 2 once CPU settled — not just written in the Terraform, actually observed happening.
+
+**Known limitation, stated plainly rather than left for someone to find:** each ASG instance runs the *entire* stack (Kafka, Keycloak, InfluxDB, all 7 services) via `docker-compose.v2.yml` — only MySQL was actually extracted to a managed service. Kafka and Keycloak are duplicated per instance, not shared. Properly centralizing them would mean pulling them out of the ASG into their own managed/shared components — a separate piece of work, not done here.
+
+**Cost note:** `c7i-flex.large` was used for the ASG instances instead of a `t3.*` size — not a deliberate performance choice, but because `t3.small` (2GB RAM) hit real OOM pressure running the full stack (lost even the SSM agent connection), `t3.medium` was rejected by this AWS account's Free-Tier-only launch restriction, and `c7i-flex.large` (4GB) was both Free-Tier-eligible on this account and large enough. Applied only for the verification window above, then torn down with `terraform destroy` — same cost-conscious pattern as the v1 instance being stopped by default.
 
 ---
 
@@ -258,10 +286,11 @@ Use Grafana for dashboards and Prometheus for ad-hoc queries and alerting rules 
 
 ## Future improvements
 
-Already in place (see [What I added on top](#what-i-added-on-top-devops-focus)): Terraform IaC (live on AWS, ported to Azure on `feature/infra-azure`), a Jenkins CI/CD pipeline (`Jenkinsfile`). Still open:
+Already in place (see [What I added on top](#what-i-added-on-top-devops-focus)): Terraform IaC on AWS for both v1 (single instance) and v2 (Multi-AZ), a validated-but-unapplied Azure port on `feature/infra-azure`, and a Jenkins CI/CD pipeline (`Jenkinsfile`). Still open:
 
 - **End-to-end tests** — Contract or black-box tests across gateway → services → Kafka → DB
-- **Finish the Azure deployment** — `terraform apply` on `feature/infra-azure` as soon as that subscription is reactivated
+- **Centralize Kafka/Keycloak in v2** — they're currently duplicated per ASG instance instead of shared (see the v2 section's known limitation)
+- **Finish the Azure deployment** — `terraform apply` on `feature/infra-azure`
 - **Frontend dashboard** — SPA for devices, live usage charts, alert history
 - **AuthZ hardening** — Fine-grained scopes, service-to-service tokens, policy engine
 - **Kubernetes** — Helm charts, external secrets, HPA, and Kafka/Influx operators
