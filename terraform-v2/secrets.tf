@@ -33,9 +33,9 @@ resource "aws_secretsmanager_secret" "app" {
 resource "aws_secretsmanager_secret_version" "app" {
   secret_id = aws_secretsmanager_secret.app.id
   secret_string = jsonencode({
-    MYSQL_ROOT_PASSWORD    = random_password.db.result
+    MYSQL_ROOT_PASSWORD     = random_password.db.result
     KEYCLOAK_ADMIN_PASSWORD = random_password.keycloak_admin.result
-    INFLUXDB_PASSWORD      = random_password.influxdb_admin.result
-    INFLUX_TOKEN           = random_password.influx_token.result
+    INFLUXDB_PASSWORD       = random_password.influxdb_admin.result
+    INFLUX_TOKEN            = random_password.influx_token.result
   })
 }
