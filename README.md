@@ -31,7 +31,11 @@ The application code, the Compose stack, and the observability wiring are leetjo
   - An IAM role/instance profile for **SSM**, and an **Elastic IP** so the address stays stable across stop/start.
   - `variables.tf` / `terraform.tfvars` — parameterized region (`eu-west-3` by default), instance type, and the operator's IP/CIDR, so the same configuration is reusable without editing `main.tf`.
   - `outputs.tf` — exposes the instance's public IP, instance ID, and a ready-to-use `ssh` command after `terraform apply`.
-- **`Jenkinsfile`** — CI/CD pipeline: builds each service, pushes images to a registry, and deploys over SSH to the target host.
+- **`Jenkinsfile`** — CI/CD pipeline: builds each of the 7 Maven services, containerizes them, pushes to a private **ECR** registry, and deploys to the EC2 instance over SSH (`docker compose pull && up -d`). Iterated on with real fixes, not written once and left alone:
+  - AWS and SSH credentials pulled from **Jenkins' own credential store** (`withCredentials`), never hardcoded in the pipeline file.
+  - Build and push steps wrapped in `retry(3)` after early runs failed on transient network errors.
+  - Docker BuildKit was tried for faster builds, caused issues in this environment, and was reverted back to plain `docker build` rather than fought indefinitely.
+  - SSH connection hardened (explicit key/user handling, connect timeouts) after early runs hung on unreachable hosts.
 - **`terraform-v2/`** — a resilience rewrite of the same deployment: single EC2 instance → VPC across 2 AZs, Application Load Balancer, Auto Scaling Group, and RDS MySQL **Multi-AZ** in place of the self-managed MySQL container. See [v2 — Multi-AZ resilience upgrade](#v2--multi-az-resilience-upgrade) below.
 - **An Azure port of the same infrastructure** on the `feature/infra-azure` branch, as a second exercise in provisioning the same stack against a different cloud provider — see that branch's README for details. It's not merged into `master` because AWS is the deployment target this README documents.
 
