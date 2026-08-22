@@ -1,0 +1,87 @@
+name: Terraform CI
+
+# Static checks only - no AWS credentials required, so this runs green on
+# every push/PR with nothing to configure. Deliberately does not attempt a
+# live `terraform plan` (that would need cloud credentials as GitHub
+# secrets, which isn't set up here) - fmt/validate/lint/security-scan
+# already catch most real mistakes and are what this workflow is for.
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "terraform/**"
+      - "terraform-v2/**"
+      - ".github/workflows/terraform-ci.yml"
+  pull_request:
+    paths:
+      - "terraform/**"
+      - "terraform-v2/**"
+      - ".github/workflows/terraform-ci.yml"
+
+jobs:
+  validate:
+    name: fmt / validate / lint (${{ matrix.dir }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        dir: [terraform, terraform-v2]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
+      - name: terraform fmt -check
+        working-directory: ${{ matrix.dir }}
+        run: terraform fmt -check -recursive
+
+      - name: terraform init (no backend)
+        working-directory: ${{ matrix.dir }}
+        run: terraform init -backend=false
+
+      - name: terraform validate
+        working-directory: ${{ matrix.dir }}
+        run: terraform validate
+
+      - uses: terraform-linters/setup-tflint@v4
+        with:
+          tflint_version: latest
+
+      - name: tflint
+        working-directory: ${{ matrix.dir }}
+        run: |
+          tflint --init
+          tflint
+
+  tfsec:
+    name: tfsec security scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: tfsec (terraform v1)
+        uses: aquasecurity/tfsec-action@v1.0.3
+        with:
+          working_directory: terraform
+
+      - name: tfsec (terraform v2)
+        uses: aquasecurity/tfsec-action@v1.0.3
+        with:
+          working_directory: terraform-v2
+
+  dockerfile-scan:
+    name: Trivy config scan (Dockerfiles)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Trivy config scan
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: config
+          scan-ref: .
+          severity: HIGH,CRITICAL
+          exit-code: 1

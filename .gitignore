@@ -42,8 +42,40 @@ logs/
 
 ### Maven & Gradle ###
 .mvn/
+!user-service/.mvn/
+!user-service/.mvn/wrapper/
+!user-service/.mvn/wrapper/maven-wrapper.properties
+!user-service/.mvn/wrapper/maven-wrapper.jar
+!device-service/.mvn/
+!device-service/.mvn/wrapper/
+!device-service/.mvn/wrapper/maven-wrapper.properties
+!device-service/.mvn/wrapper/maven-wrapper.jar
+!alert-service/.mvn/
+!alert-service/.mvn/wrapper/
+!alert-service/.mvn/wrapper/maven-wrapper.properties
+!alert-service/.mvn/wrapper/maven-wrapper.jar
+!api-gateway/.mvn/
+!api-gateway/.mvn/wrapper/
+!api-gateway/.mvn/wrapper/maven-wrapper.properties
+!api-gateway/.mvn/wrapper/maven-wrapper.jar
+!ingestion-service/.mvn/
+!ingestion-service/.mvn/wrapper/
+!ingestion-service/.mvn/wrapper/maven-wrapper.properties
+!ingestion-service/.mvn/wrapper/maven-wrapper.jar
+!insight-service/.mvn/
+!insight-service/.mvn/wrapper/
+!insight-service/.mvn/wrapper/maven-wrapper.properties
+!insight-service/.mvn/wrapper/maven-wrapper.jar
+!usage-service/.mvn/
+!usage-service/.mvn/wrapper/
+!usage-service/.mvn/wrapper/maven-wrapper.properties
+!usage-service/.mvn/wrapper/maven-wrapper.jar
 .gradle/
 
 #Excluded dirs
 influxdb_data/
 volume-data/
+terraform/.terraform/
+terraform/*.tfstate
+terraform/*.tfstate.backup
+*.tfvars
