@@ -73,12 +73,6 @@ variable "image_tag" {
   default     = "1"
 }
 
-variable "my_ip_cidr" {
-  description = "Your public IP in CIDR format, for restricted admin access (Grafana/Kafka UI/etc. if ever exposed)"
-  type        = string
-  default     = "0.0.0.0/0"
-}
-
 variable "project" {
   description = "Project tag applied to every resource"
   type        = string

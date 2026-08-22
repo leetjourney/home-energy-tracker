@@ -17,7 +17,6 @@ variable "public_key_path" {
 }
 
 variable "my_ip_cidr" {
-  description = "Your public IP in CIDR format, e.g. 82.123.45.67/32 (get it from https://whatismyip.com)"
+  description = "Your public IP in CIDR format, e.g. 82.123.45.67/32 (get it from https://whatismyip.com). No default on purpose: SSH and the admin ports (Grafana/Prometheus/Kafka UI/Mailpit/Keycloak) are scoped to this CIDR, so an unset value would silently open them to the entire internet."
   type        = string
-  default     = "0.0.0.0/0"
 }

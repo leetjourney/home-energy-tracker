@@ -11,8 +11,11 @@ resource "aws_security_group" "home_energy_tracker_sg" {
     cidr_blocks = [var.my_ip_cidr]
   }
 
+  # Intentionally public: this is the app's single public entry point
+  # (API Gateway), everything else in this security group is IP-restricted.
+  #tfsec:ignore:aws-ec2-no-public-ingress-sgr
   ingress {
-    description = "API Gateway"
+    description = "API Gateway - intentionally public, the app's single entry point"
     from_port   = 9000
     to_port     = 9000
     protocol    = "tcp"
@@ -59,7 +62,12 @@ resource "aws_security_group" "home_energy_tracker_sg" {
     cidr_blocks = [var.my_ip_cidr]
   }
 
+  # tfsec flags unrestricted egress by default; accepted here rather than
+  # maintained as an allowlist of AWS/Docker Hub/apt-mirror IP ranges, which
+  # would be high-maintenance for a personal learning-project host.
+  #tfsec:ignore:aws-ec2-no-public-egress-sgr
   egress {
+    description = "All outbound (needed for apt/Docker/ECR pulls)"
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
@@ -133,6 +141,12 @@ resource "aws_instance" "home_energy_tracker" {
   root_block_device {
     volume_size = 30
     volume_type = "gp3"
+    encrypted   = true
+  }
+
+  metadata_options {
+    http_tokens   = "required" # enforce IMDSv2 - blocks SSRF-based credential theft via the metadata service
+    http_endpoint = "enabled"
   }
 
   lifecycle {

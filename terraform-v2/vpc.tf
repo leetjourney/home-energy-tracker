@@ -1,3 +1,7 @@
+# VPC Flow Logs are skipped on purpose: this VPC exists for a few hours per
+# verification run, and Flow Logs need their own CloudWatch Logs group + IAM
+# role - real value for anything longer-lived, not for an ephemeral demo.
+#tfsec:ignore:aws-ec2-require-vpc-flow-logs-for-all-vpcs
 resource "aws_vpc" "main" {
   cidr_block           = var.vpc_cidr
   enable_dns_support   = true
@@ -19,6 +23,9 @@ resource "aws_internet_gateway" "main" {
 }
 
 # --- Public subnets (ALB + NAT Gateway) ---
+# map_public_ip_on_launch is required here: the ALB and NAT Gateway both
+# need public IPs to function, that's what makes these subnets "public".
+#tfsec:ignore:aws-ec2-no-public-ip-subnet
 resource "aws_subnet" "public" {
   count                   = length(var.public_subnet_cidrs)
   vpc_id                  = aws_vpc.main.id

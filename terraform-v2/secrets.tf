@@ -21,6 +21,10 @@ resource "random_password" "influx_token" {
 # Single JSON secret for all app credentials, fetched by the instances at
 # boot via their IAM role - nothing is hardcoded in the AMI/user_data,
 # matching the "no stored credentials" pattern used on the Save Money project.
+# Uses the AWS-managed default KMS key rather than a customer-managed one:
+# a CMK adds ~$1/month plus key-policy upkeep, not worth it for a secret
+# that exists for a few hours per verification run.
+#tfsec:ignore:aws-ssm-secret-use-customer-key
 resource "aws_secretsmanager_secret" "app" {
   name                    = "${var.project}-app-secrets"
   recovery_window_in_days = 0 # demo resource, allow immediate deletion on destroy

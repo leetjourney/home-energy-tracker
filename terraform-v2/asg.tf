@@ -24,6 +24,11 @@ resource "aws_launch_template" "app" {
 
   vpc_security_group_ids = [aws_security_group.app.id]
 
+  metadata_options {
+    http_tokens   = "required" # enforce IMDSv2
+    http_endpoint = "enabled"
+  }
+
   block_device_mappings {
     device_name = "/dev/sda1"
     ebs {
