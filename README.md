@@ -1,5 +1,6 @@
 # Home Energy Tracker
 
+[![Terraform CI](https://github.com/JuniorZ-spec/home-energy-tracker/actions/workflows/terraform-ci.yml/badge.svg)](https://github.com/JuniorZ-spec/home-energy-tracker/actions/workflows/terraform-ci.yml)
 [![Java](https://img.shields.io/badge/Java-21-orange.svg)](https://openjdk.org/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.0-green.svg)](https://spring.io/projects/spring-boot)
 [![Spring Cloud](https://img.shields.io/badge/Spring%20Cloud-2025.1.0-blue.svg)](https://spring.io/projects/spring-cloud)
@@ -48,6 +49,7 @@ The application code, the Compose stack, and the observability wiring are leetjo
   - Docker BuildKit was tried for faster builds, caused issues in this environment, and was reverted back to plain `docker build` rather than fought indefinitely.
   - SSH connection hardened (explicit key/user handling, connect timeouts) after early runs hung on unreachable hosts.
 - **`terraform-v2/`** — a resilience rewrite of the same deployment: single EC2 instance → VPC across 2 AZs, Application Load Balancer, Auto Scaling Group, and RDS MySQL **Multi-AZ** in place of the self-managed MySQL container. See [v2 — Multi-AZ resilience upgrade](#v2--multi-az-resilience-upgrade) below.
+- **`.github/workflows/terraform-ci.yml`** — static checks on every push/PR touching either Terraform directory: `fmt`, `validate`, `tflint`, a `tfsec` security scan, and a Trivy config scan on the service Dockerfiles. Unlike the Jenkins pipeline (which needs a server that isn't always running), this runs on GitHub's own infrastructure and is publicly verifiable — the badge at the top of this README reflects the actual current state. Its first run caught real issues (an insecure-by-default variable, unencrypted volumes, IMDSv2 not enforced); each fix is in the commit history, and the handful of findings that are deliberate trade-offs for an ephemeral demo (public ALB, HTTP-only listener, no VPC Flow Logs, minimal RDS backup retention) are suppressed with an inline comment explaining why, not silently ignored.
 - **An Azure port of the same infrastructure** on the `feature/infra-azure` branch, as a second exercise in provisioning the same stack against a different cloud provider — see that branch's README for details. It's not merged into `master` because AWS is the deployment target this README documents.
 
 The practical exercise here is turning a "runs on my machine via Compose" project into something provisioned, reproducible, and deployable to a real cloud environment with `terraform init/plan/apply`, without having to touch the application code.
@@ -301,7 +303,7 @@ Use Grafana for dashboards and Prometheus for ad-hoc queries and alerting rules 
 
 ## Future improvements
 
-Already in place (see [What I added on top](#what-i-added-on-top-devops-focus)): Terraform IaC on AWS for both v1 (single instance) and v2 (Multi-AZ), a validated-but-unapplied Azure port on `feature/infra-azure`, and a Jenkins CI/CD pipeline (`Jenkinsfile`). Still open:
+Already in place (see [What I added on top](#what-i-added-on-top-devops-focus)): Terraform IaC on AWS for both v1 (single instance) and v2 (Multi-AZ), a validated-but-unapplied Azure port on `feature/infra-azure`, a Jenkins CI/CD pipeline (`Jenkinsfile`), and a GitHub Actions workflow for static Terraform checks and security scanning. Still open:
 
 - **End-to-end tests** — Contract or black-box tests across gateway → services → Kafka → DB
 - **Centralize Kafka/Keycloak in v2** — they're currently duplicated per ASG instance instead of shared (see the v2 section's known limitation)
