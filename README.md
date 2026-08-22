@@ -24,7 +24,7 @@ I forked this project to practice **DevOps** on top of an already realistic, mul
 
 The application code, the Compose stack, and the observability wiring are leetjourney's original work. On top of that, I added:
 
-- **`Terraform/`** — Infrastructure as Code to provision the stack on **AWS** (stopped by default to avoid ongoing cost, see [Current deployment status](#current-deployment-status)):
+- **`terraform/`** — Infrastructure as Code to provision the stack on **AWS** (stopped by default to avoid ongoing cost, see [Current deployment status](#current-deployment-status)):
   - `main.tf` — an EC2 instance (latest Ubuntu AMI, `t3.small`, 30 GB `gp3` root volume) with a `user_data` bootstrap script that installs **Docker** and the **Docker Compose plugin** on first boot, so the existing `docker-compose.yml` can run unmodified on the instance.
   - A dedicated **security group** exposing only what's needed: SSH (22) and the observability/admin ports (Grafana 3000, Prometheus 9090, Kafka UI 8070, Mailpit 8025, Keycloak 8091) restricted to my own IP, with only the **API Gateway** (9000) open publicly — a basic least-privilege network boundary instead of opening everything.
   - An `aws_key_pair` resource wired to a local SSH public key, and a `data "aws_ami"` lookup so the instance always boots the latest Ubuntu image instead of a hardcoded, staleness-prone AMI ID.
@@ -33,13 +33,13 @@ The application code, the Compose stack, and the observability wiring are leetjo
   - `outputs.tf` — exposes the instance's public IP, instance ID, and a ready-to-use `ssh` command after `terraform apply`.
 - **`Jenkinsfile`** — CI/CD pipeline: builds each service, pushes images to a registry, and deploys over SSH to the target host.
 - **`terraform-v2/`** — a resilience rewrite of the same deployment: single EC2 instance → VPC across 2 AZs, Application Load Balancer, Auto Scaling Group, and RDS MySQL **Multi-AZ** in place of the self-managed MySQL container. See [v2 — Multi-AZ resilience upgrade](#v2--multi-az-resilience-upgrade) below.
-- **A Docker Hub/Azure port of the same infrastructure** on the `feature/infra-azure` branch, as a second exercise in provisioning the same stack against a different cloud provider — see that branch's README for details. It's not merged into `master` because AWS is the version actually running.
+- **An Azure port of the same infrastructure** on the `feature/infra-azure` branch, as a second exercise in provisioning the same stack against a different cloud provider — see that branch's README for details. It's not merged into `master` because AWS is the deployment target this README documents.
 
 The practical exercise here is turning a "runs on my machine via Compose" project into something provisioned, reproducible, and deployable to a real cloud environment with `terraform init/plan/apply`, without having to touch the application code.
 
 ### Current deployment status
 
-**Stopped** — the v1 EC2 instance (`t3.small`, `eu-west-3`, behind a stable Elastic IP) is intentionally left stopped rather than run continuously, to avoid paying for idle infrastructure on a personal budget. It was last verified fully working on 2026-08-20: recovered from a network-unreachable state with a reboot, boot log confirmed SSHD, Docker, and all containers starting cleanly. It is not live right now — start it with `terraform apply` (or from the AWS console) for a live demo; the address is in `terraform output instance_public_ip`.
+**Stopped** — the v1 EC2 instance (`t3.small`, `eu-west-3`, behind a stable Elastic IP) is intentionally left stopped rather than run continuously: a deliberate cost-conscious practice (provision on demand, verify, tear down) applied consistently across this repo rather than leaving idle infrastructure running. It was last verified fully working on 2026-08-20: recovered from a network-unreachable state with a reboot, boot log confirmed SSHD, Docker, and all containers starting cleanly. It is not live right now — start it with `terraform apply` (or from the AWS console) for a live demo; the address is in `terraform output instance_public_ip`.
 
 The **v2** Multi-AZ stack (below) follows the same pattern: applied for a verification window, then destroyed — it is not live either.
 
